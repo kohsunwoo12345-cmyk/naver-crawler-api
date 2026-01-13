@@ -134,7 +134,7 @@ def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
         response = requests.get(search_url, headers=headers, timeout=30)
         print(f"응답 코드: {response.status_code}")
         
-        soup = BeautifulSoup(response.text, 'lxml')
+        soup = BeautifulSoup(response.text, 'html.parser')
         
         places = []
         my_rank = None
