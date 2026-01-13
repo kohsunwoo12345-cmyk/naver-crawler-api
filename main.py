@@ -448,23 +448,26 @@ def parse_search_volume_extended(api_response: Dict, original_keyword: str = "")
             print(f"🔍 입력 키워드: {original_keyword}")
             
             # 1순위: 정확히 일치하는 키워드 찾기
+            found_exact = False
             for kw in keywords:
                 if kw.get("relKeyword", "").strip() == original_keyword.strip():
                     keyword_data = kw
+                    found_exact = True
                     print(f"✅ 정확 일치: {kw.get('relKeyword')}")
                     break
-            else:
+            
+            if not found_exact:
                 # 2순위: 포함 관계 (부분 일치)
                 for kw in keywords:
                     rel_kw = kw.get("relKeyword", "").strip()
                     if original_keyword in rel_kw or rel_kw in original_keyword:
                         keyword_data = kw
-                        print(f"✅ 부분 일치: {kw.get('relKeyword')}")
+                        print(f"⚠️ 정확한 데이터 없음. 유사 키워드 사용: '{kw.get('relKeyword')}'")
                         break
                 else:
-                    # 매칭 실패: 첫 번째 키워드 사용
-                    print(f"⚠️ 일치하는 키워드 없음, 첫 번째 사용: {keywords[0].get('relKeyword')}")
-                    print(f"💡 입력한 '{original_keyword}'의 정확한 검색량이 없을 수 있습니다")
+                    # 3순위: 첫 번째 키워드 사용
+                    keyword_data = keywords[0]
+                    print(f"⚠️ '{original_keyword}' 데이터 없음. 관련 키워드 '{keywords[0].get('relKeyword')}' 사용")
         
         monthly_pc = keyword_data.get("monthlyPcQcCnt", 0)
         monthly_mobile = keyword_data.get("monthlyMobileQcCnt", 0)
@@ -551,22 +554,26 @@ def parse_search_volume(api_response: Dict, original_keyword: str = "") -> Dict:
         
         if original_keyword:
             # 1순위: 정확히 일치하는 키워드 찾기
+            found_exact = False
             for kw in keywords:
                 if kw.get("relKeyword", "").strip() == original_keyword.strip():
                     keyword_data = kw
+                    found_exact = True
                     print(f"✅ 정확 일치: {kw.get('relKeyword')}")
                     break
-            else:
+            
+            if not found_exact:
                 # 2순위: 포함 관계 (부분 일치)
                 for kw in keywords:
                     rel_kw = kw.get("relKeyword", "").strip()
                     if original_keyword in rel_kw or rel_kw in original_keyword:
                         keyword_data = kw
-                        print(f"✅ 부분 일치: {kw.get('relKeyword')}")
+                        print(f"⚠️ 유사 키워드 사용: '{kw.get('relKeyword')}'")
                         break
                 else:
-                    # 매칭 실패: 첫 번째 키워드 사용
-                    print(f"⚠️ 일치하는 키워드 없음, 첫 번째 사용: {keywords[0].get('relKeyword')}")
+                    # 3순위: 첫 번째 키워드 사용
+                    keyword_data = keywords[0]
+                    print(f"⚠️ 관련 키워드 '{keywords[0].get('relKeyword')}' 사용")
         
         monthly_avg = keyword_data.get("monthlyPcQcCnt", 0) + keyword_data.get("monthlyMobileQcCnt", 0)
         comp_idx = keyword_data.get("compIdx", "01")
