@@ -16,6 +16,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 import traceback
 
 app = FastAPI(title="Naver Crawler API", version="1.0.0")
@@ -152,8 +153,9 @@ def create_chrome_driver():
     # User-Agent 설정
     chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
     
-    # WebDriver 생성
-    driver = webdriver.Chrome(options=chrome_options)
+    # WebDriver 생성 (webdriver-manager가 자동으로 ChromeDriver 다운로드)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.set_page_load_timeout(30)
     
     return driver
