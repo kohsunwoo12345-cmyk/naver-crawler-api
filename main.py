@@ -64,18 +64,8 @@ def generate_signature(timestamp: str, method: str, uri: str) -> str:
 
 # 네이버 검색광고 API 호출
 def call_naver_api(keyword: str) -> Dict:
-    """네이버 검색광고 API로 키워드 검색량 조회"""
+    """네이버 검색광고 API로 키워드 검색량 조회 (원본 키워드 그대로 사용)"""
     try:
-        # 지역명 제거 (인천, 서울, 부산 등)
-        regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-                   "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대"]
-        core_keyword = keyword
-        for region in regions:
-            core_keyword = core_keyword.replace(region + " ", "").replace(region, "")
-        core_keyword = core_keyword.strip()
-        
-        print(f"원본 키워드: {keyword} → 핵심 키워드: {core_keyword}")
-        
         timestamp = str(int(time.time() * 1000))
         method = "GET"
         uri = "/keywordstool"
@@ -90,14 +80,14 @@ def call_naver_api(keyword: str) -> Dict:
             "Content-Type": "application/json"
         }
         
-        # 키워드 검색량 조회 API
+        # 키워드 검색량 조회 API (원본 키워드 그대로 사용)
         url = "https://api.naver.com/keywordstool"
         params = {
-            "hintKeywords": core_keyword,  # 핵심 키워드로 검색
+            "hintKeywords": keyword,  # 입력한 키워드 그대로 사용
             "showDetail": "1"
         }
         
-        print(f"네이버 API 호출: {core_keyword}")
+        print(f"네이버 API 호출: {keyword}")
         
         response = requests.get(url, headers=headers, params=params, timeout=30)
         
@@ -451,29 +441,30 @@ def parse_search_volume_extended(api_response: Dict, original_keyword: str = "")
                 "recommendation": "데이터 없음"
             }
         
-        # 원본 키워드와 가장 유사한 키워드 찾기
-        keyword_data = keywords[0]  # 기본값
+        # 원본 키워드와 정확히 일치하는 키워드 찾기
+        keyword_data = keywords[0]  # 기본값: 첫 번째 키워드
         
         if original_keyword:
-            # 지역명 제거
-            regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-                       "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대"]
-            core_original = original_keyword
-            for region in regions:
-                core_original = core_original.replace(region + " ", "").replace(region, "")
-            core_original = core_original.strip()
+            print(f"🔍 입력 키워드: {original_keyword}")
             
-            # 정확히 일치하는 키워드 찾기
+            # 1순위: 정확히 일치하는 키워드 찾기
             for kw in keywords:
-                if kw.get("relKeyword", "").strip() == core_original:
+                if kw.get("relKeyword", "").strip() == original_keyword.strip():
                     keyword_data = kw
+                    print(f"✅ 정확 일치: {kw.get('relKeyword')}")
                     break
             else:
-                # 부분 일치 찾기
+                # 2순위: 포함 관계 (부분 일치)
                 for kw in keywords:
-                    if core_original in kw.get("relKeyword", "") or kw.get("relKeyword", "") in core_original:
+                    rel_kw = kw.get("relKeyword", "").strip()
+                    if original_keyword in rel_kw or rel_kw in original_keyword:
                         keyword_data = kw
+                        print(f"✅ 부분 일치: {kw.get('relKeyword')}")
                         break
+                else:
+                    # 매칭 실패: 첫 번째 키워드 사용
+                    print(f"⚠️ 일치하는 키워드 없음, 첫 번째 사용: {keywords[0].get('relKeyword')}")
+                    print(f"💡 입력한 '{original_keyword}'의 정확한 검색량이 없을 수 있습니다")
         
         monthly_pc = keyword_data.get("monthlyPcQcCnt", 0)
         monthly_mobile = keyword_data.get("monthlyMobileQcCnt", 0)
@@ -555,35 +546,27 @@ def parse_search_volume(api_response: Dict, original_keyword: str = "") -> Dict:
                 "recommendation": "데이터 없음"
             }
         
-        # 원본 키워드와 가장 유사한 키워드 찾기
-        keyword_data = keywords[0]  # 기본값
+        # 원본 키워드와 정확히 일치하는 키워드 찾기
+        keyword_data = keywords[0]  # 기본값: 첫 번째 키워드
         
         if original_keyword:
-            # 지역명 제거
-            regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-                       "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대"]
-            core_original = original_keyword
-            for region in regions:
-                core_original = core_original.replace(region + " ", "").replace(region, "")
-            core_original = core_original.strip()
-            
-            print(f"🔍 원본 키워드: {original_keyword} → 핵심: {core_original}")
-            
-            # 정확히 일치하는 키워드 찾기
+            # 1순위: 정확히 일치하는 키워드 찾기
             for kw in keywords:
-                if kw.get("relKeyword", "").strip() == core_original:
+                if kw.get("relKeyword", "").strip() == original_keyword.strip():
                     keyword_data = kw
                     print(f"✅ 정확 일치: {kw.get('relKeyword')}")
                     break
             else:
-                # 부분 일치 찾기
+                # 2순위: 포함 관계 (부분 일치)
                 for kw in keywords:
-                    if core_original in kw.get("relKeyword", "") or kw.get("relKeyword", "") in core_original:
+                    rel_kw = kw.get("relKeyword", "").strip()
+                    if original_keyword in rel_kw or rel_kw in original_keyword:
                         keyword_data = kw
                         print(f"✅ 부분 일치: {kw.get('relKeyword')}")
                         break
                 else:
-                    print(f"⚠️  일치하는 키워드 없음, 첫 번째 사용: {keywords[0].get('relKeyword')}")
+                    # 매칭 실패: 첫 번째 키워드 사용
+                    print(f"⚠️ 일치하는 키워드 없음, 첫 번째 사용: {keywords[0].get('relKeyword')}")
         
         monthly_avg = keyword_data.get("monthlyPcQcCnt", 0) + keyword_data.get("monthlyMobileQcCnt", 0)
         comp_idx = keyword_data.get("compIdx", "01")
