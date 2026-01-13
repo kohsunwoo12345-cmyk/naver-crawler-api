@@ -66,6 +66,16 @@ def generate_signature(timestamp: str, method: str, uri: str) -> str:
 def call_naver_api(keyword: str) -> Dict:
     """네이버 검색광고 API로 키워드 검색량 조회"""
     try:
+        # 지역명 제거 (인천, 서울, 부산 등)
+        regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+                   "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대"]
+        core_keyword = keyword
+        for region in regions:
+            core_keyword = core_keyword.replace(region + " ", "").replace(region, "")
+        core_keyword = core_keyword.strip()
+        
+        print(f"원본 키워드: {keyword} → 핵심 키워드: {core_keyword}")
+        
         timestamp = str(int(time.time() * 1000))
         method = "GET"
         uri = "/keywordstool"
@@ -80,27 +90,34 @@ def call_naver_api(keyword: str) -> Dict:
             "Content-Type": "application/json"
         }
         
-        # 키워드 검색량 조회 API (올바른 엔드포인트)
+        # 키워드 검색량 조회 API
         url = "https://api.naver.com/keywordstool"
         params = {
-            "hintKeywords": keyword,
+            "hintKeywords": core_keyword,  # 핵심 키워드로 검색
             "showDetail": "1"
         }
         
-        print(f"네이버 API 호출: {keyword}")
-        print(f"Headers: {headers}")
+        print(f"네이버 API 호출: {core_keyword}")
         
         response = requests.get(url, headers=headers, params=params, timeout=30)
         
         print(f"응답 코드: {response.status_code}")
-        print(f"응답 내용: {response.text[:200]}")
         
         if response.status_code == 200:
             data = response.json()
-            return {
-                "success": True,
-                "data": data
-            }
+            keywords = data.get("keywordList", [])
+            if keywords:
+                print(f"✅ {len(keywords)}개 키워드 발견")
+                return {
+                    "success": True,
+                    "data": data
+                }
+            else:
+                print("⚠️  키워드 데이터 없음")
+                return {
+                    "success": False,
+                    "error": "키워드 데이터 없음"
+                }
         else:
             print(f"API 오류: {response.status_code} - {response.text}")
             return {
