@@ -64,11 +64,49 @@ def generate_signature(timestamp: str, method: str, uri: str) -> str:
 
 # 네이버 검색광고 API 호출
 def call_naver_api(keyword: str) -> Dict:
-    """네이버 검색광고 API로 키워드 검색량 조회 (지역명 자동 제거)"""
+    """네이버 검색광고 API로 키워드 검색량 조회 (원본 우선, 실패 시 지역명 제거)"""
     try:
-        # 지역명 제거 (네이버 API는 핵심 키워드만 데이터 제공)
+        url = "https://api.naver.com/keywordstool"
+        
+        # 1단계: 원본 키워드 그대로 시도
+        print(f"🔍 1단계: 원본 키워드로 검색: '{keyword}'")
+        
+        timestamp = str(int(time.time() * 1000))
+        method = "GET"
+        uri = "/keywordstool"
+        signature = generate_signature(timestamp, method, uri)
+        
+        headers = {
+            "X-Timestamp": timestamp,
+            "X-API-KEY": NAVER_API_LICENSE,
+            "X-Customer": NAVER_API_CUSTOMER_ID,
+            "X-Signature": signature,
+            "Content-Type": "application/json"
+        }
+        
+        params = {
+            "hintKeywords": keyword,  # 원본 키워드 그대로
+            "showDetail": "1"
+        }
+        
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            keywords = data.get("keywordList", [])
+            if keywords:
+                print(f"✅ 원본 키워드로 {len(keywords)}개 발견!")
+                return {
+                    "success": True,
+                    "data": data,
+                    "matched_keyword": keyword  # 원본 키워드 매칭
+                }
+        
+        # 2단계: 데이터 없으면 지역명 제거 후 재시도
+        print(f"⚠️  원본 키워드 데이터 없음. 지역명 제거 후 재시도...")
+        
         regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-                   "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대",
+                   "서구", "북구", "동구", "남구", "중구", "청라", "검단", "신도시", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대",
                    "분당", "일산", "수원", "용인", "성남", "안양", "부천", "안산", "남양주", "화성"]
         
         core_keyword = keyword
@@ -80,33 +118,16 @@ def call_naver_api(keyword: str) -> Dict:
                     removed_regions.append(region)
         core_keyword = core_keyword.strip()
         
-        if removed_regions:
-            print(f"📍 원본 키워드: {keyword} → 핵심 키워드: {core_keyword} (지역: {', '.join(removed_regions)})")
-        else:
-            print(f"🔍 검색 키워드: {keyword}")
+        print(f"🔍 2단계: 핵심 키워드로 검색: '{core_keyword}' (제거된 지역: {', '.join(removed_regions) if removed_regions else '없음'})")
         
+        # 타임스탬프 갱신
         timestamp = str(int(time.time() * 1000))
-        method = "GET"
-        uri = "/keywordstool"
-        
         signature = generate_signature(timestamp, method, uri)
         
-        headers = {
-            "X-Timestamp": timestamp,
-            "X-API-KEY": NAVER_API_LICENSE,
-            "X-Customer": NAVER_API_CUSTOMER_ID,
-            "X-Signature": signature,
-            "Content-Type": "application/json"
-        }
+        headers["X-Timestamp"] = timestamp
+        headers["X-Signature"] = signature
         
-        # 키워드 검색량 조회 API (핵심 키워드 사용)
-        url = "https://api.naver.com/keywordstool"
-        params = {
-            "hintKeywords": core_keyword,  # 지역명 제거한 핵심 키워드
-            "showDetail": "1"
-        }
-        
-        print(f"네이버 API 호출: {core_keyword}")
+        params["hintKeywords"] = core_keyword
         
         response = requests.get(url, headers=headers, params=params, timeout=30)
         
@@ -116,13 +137,14 @@ def call_naver_api(keyword: str) -> Dict:
             data = response.json()
             keywords = data.get("keywordList", [])
             if keywords:
-                print(f"✅ {len(keywords)}개 키워드 발견")
+                print(f"✅ 핵심 키워드로 {len(keywords)}개 발견!")
                 return {
                     "success": True,
-                    "data": data
+                    "data": data,
+                    "matched_keyword": core_keyword  # 핵심 키워드 매칭
                 }
             else:
-                print("⚠️  키워드 데이터 없음")
+                print("❌ 키워드 데이터 없음")
                 return {
                     "success": False,
                     "error": "키워드 데이터 없음"
@@ -659,9 +681,13 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         api_response = call_naver_api(keyword)
         print(f"✅ API 응답: success={api_response.get('success')}")
         
+        # 매칭된 키워드 추출
+        matched_keyword = api_response.get('matched_keyword', keyword)
+        
         # 확장 버전 (CTR 포함)
         search_volume_extended = parse_search_volume_extended(api_response, keyword)
-        print(f"📈 검색량: {search_volume_extended.get('monthlyAvg')}, 경쟁도: {search_volume_extended.get('competition')}, 평균 CTR: {search_volume_extended.get('averageCtr')}%")
+        search_volume_extended['matchedKeyword'] = matched_keyword  # 매칭된 키워드 추가
+        print(f"📈 검색량: {search_volume_extended.get('monthlyAvg')}, 경쟁도: {search_volume_extended.get('competition')}, 평균 CTR: {search_volume_extended.get('averageCtr')}%, 매칭: {matched_keyword}")
         
         # 관련 키워드 추출 (10개)
         related_keywords = extract_related_keywords(api_response, keyword, limit=10)
