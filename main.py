@@ -23,9 +23,16 @@ app.add_middleware(
 )
 
 # 네이버 검색광고 API 설정
-NAVER_API_CUSTOMER_ID = os.getenv("NAVER_API_CUSTOMER_ID", "wangholy1:naver")
-NAVER_API_LICENSE = os.getenv("NAVER_API_LICENSE", "01000000006a4f450842ff67bf50816ad0b679dd44241f6b641599b10cf7b3fd6e39cbb6c6")
-NAVER_API_SECRET = os.getenv("NAVER_API_SECRET", "AQAAAABqT0UIQv9nv1CBatC2ed1Ea/SXPmw5pFA12eIEoWlSXQ==")
+NAVER_API_CUSTOMER_ID = os.getenv("NAVER_API_CUSTOMER_ID")
+NAVER_API_LICENSE = os.getenv("NAVER_API_LICENSE")
+NAVER_API_SECRET = os.getenv("NAVER_API_SECRET")
+
+# 환경 변수 검증
+print(f"🔧 Environment Check:")
+print(f"  - CUSTOMER_ID: {'✅ Set' if NAVER_API_CUSTOMER_ID else '❌ Missing'}")
+print(f"  - LICENSE: {'✅ Set' if NAVER_API_LICENSE else '❌ Missing'}")
+print(f"  - SECRET: {'✅ Set' if NAVER_API_SECRET else '❌ Missing'}")
+print(f"  - PORT: {os.getenv('PORT', '8000')}")
 
 # 요청 모델
 class SearchAnalysisRequest(BaseModel):
