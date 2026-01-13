@@ -1,85 +1,58 @@
 # Naver Crawler API
 
-네이버 검색광고 API와 Selenium을 활용한 검색량 및 순위 분석 서버
+네이버 검색광고 API + Selenium 크롤링 서버
 
-## 기능
+## 기술 스택
+- **FastAPI**: Python 웹 프레임워크
+- **Selenium**: 웹 자동화 및 크롤링
+- **Chrome (Headless)**: 브라우저 엔진
+- **네이버 검색광고 API**: 검색량 데이터
 
-- 네이버 검색광고 API를 통한 키워드 검색량 조회
-- Selenium을 이용한 네이버 플레이스 순위 크롤링 (광고 제외)
-- 경쟁사 정보 및 키워드 추출
+## 주요 기능
+1. **네이버 검색광고 API**: 월 평균 검색량, 경쟁 강도
+2. **Selenium 크롤링**: 플레이스 순위, 경쟁사 정보
+3. **경쟁사 키워드 추출**: 자동 키워드 분석
+4. **메모리 최적화**: driver.quit() 자동 처리
 
 ## 환경 변수
-
-Railway 배포 시 다음 환경 변수를 설정하세요:
-
 ```
-NAVER_API_CUSTOMER_ID=wangholy1:naver
-NAVER_API_LICENSE=01000000006a4f450842ff67bf50816ad0b679dd44241f6b641599b10cf7b3fd6e39cbb6c6
-NAVER_API_SECRET=AQAAAABqT0UIQv9nv1CBatC2ed1Ea/SXPmw5pFA12eIEoWlSXQ==
+NAVER_API_CUSTOMER_ID=1978176
+NAVER_API_LICENSE=0100000000713f505bb5fda08833f32b6a9ae08c5ea5789f134c7b140446e58bdb4183fc1d
+NAVER_API_SECRET=AQAAAABxP1Bbtf2giDPzK2qa4Ixetc774mZsCjCKxTp2BVV29g==
 PORT=8000
 ```
 
 ## API 엔드포인트
+- `GET /`: 헬스 체크
+- `POST /analyze`: 키워드 분석
+- `GET /test-api`: 네이버 API 테스트
 
-### POST /analyze
-키워드 분석 (검색량 + 순위)
-
-**요청:**
-```json
-{
-  "keyword": "인천 영어학원",
-  "placeUrl": "https://m.place.naver.com/place/..."
-}
+## Docker 배포
+```bash
+docker build -t naver-crawler .
+docker run -p 8000:8000 \
+  -e NAVER_API_CUSTOMER_ID=1978176 \
+  -e NAVER_API_LICENSE=... \
+  -e NAVER_API_SECRET=... \
+  naver-crawler
 ```
 
-**응답:**
-```json
-{
-  "success": true,
-  "searchVolume": {
-    "monthlyAvg": 1200,
-    "competition": "높음",
-    "recommendation": "추천"
-  },
-  "ranking": {
-    "myRank": 3,
-    "competitors": [...]
-  },
-  "keywords": [...]
-}
-```
+## Railway 배포
+1. GitHub 저장소 연결
+2. 환경 변수 설정 (4개)
+3. 자동 빌드 & 배포
 
-### GET /
-헬스 체크
-
-### GET /test-api
-네이버 API 테스트
-
-## 로컬 실행
-
+## 로컬 개발
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-서버가 http://localhost:8000 에서 실행됩니다.
+## 메모리 관리
+- Selenium WebDriver는 사용 후 자동 종료 (`driver.quit()`)
+- Headless 모드로 메모리 사용량 최소화
+- 이미지/CSS 로딩 비활성화로 속도 향상
 
-## Railway 배포
-
-1. Railway 계정 생성: https://railway.app
-2. GitHub 연동 또는 CLI 배포
-3. 환경 변수 설정
-4. Chrome 빌드팩 추가 (Selenium 사용)
-
-## 기술 스택
-
-- FastAPI - 웹 프레임워크
-- Selenium - 웹 크롤링
-- Requests - HTTP 클라이언트
-- Uvicorn - ASGI 서버
-
-## 주의사항
-
-- Chrome 드라이버 필요 (Railway는 자동 설치)
-- 크롤링 속도 제한 고려
-- 네이버 API 사용량 제한 확인
+## 배포 정보
+- 저장소: https://github.com/kohsunwoo12345-cmyk/naver-crawler-api
+- Railway URL: https://web-production-14c4.up.railway.app

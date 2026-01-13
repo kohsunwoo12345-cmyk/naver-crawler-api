@@ -10,6 +10,13 @@ from typing import List, Dict, Optional
 from bs4 import BeautifulSoup
 import json
 import os
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import traceback
 
 app = FastAPI(title="Naver Crawler API", version="1.0.0")
 
@@ -22,10 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 네이버 검색광고 API 설정
-NAVER_API_CUSTOMER_ID = os.getenv("NAVER_API_CUSTOMER_ID")
-NAVER_API_LICENSE = os.getenv("NAVER_API_LICENSE")
-NAVER_API_SECRET = os.getenv("NAVER_API_SECRET")
+# 네이버 검색광고 API 설정 (새 계정)
+NAVER_API_CUSTOMER_ID = os.getenv("NAVER_API_CUSTOMER_ID", "1978176")
+NAVER_API_LICENSE = os.getenv("NAVER_API_LICENSE", "0100000000713f505bb5fda08833f32b6a9ae08c5ea5789f134c7b140446e58bdb4183fc1d")
+NAVER_API_SECRET = os.getenv("NAVER_API_SECRET", "AQAAAABxP1Bbtf2giDPzK2qa4Ixetc774mZsCjCKxTp2BVV29g==")
 
 # 환경 변수 검증 (상세)
 print(f"=" * 60)
@@ -116,76 +123,102 @@ def call_naver_api(keyword: str) -> Dict:
             "error": str(e)
         }
 
-# 네이버 플레이스 순위 크롤링
-def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
-    """네이버 플레이스 순위 크롤링 (광고 제외) - BeautifulSoup 사용"""
+# Selenium WebDriver 생성 함수 (메모리 최적화)
+def create_chrome_driver():
+    """Chrome WebDriver 생성 (Headless 모드, 메모리 최적화)"""
+    chrome_options = Options()
+    
+    # Headless 모드
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    
+    # 메모리 최적화
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-software-rasterizer')
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--disable-background-networking')
+    chrome_options.add_argument('--disable-background-timer-throttling')
+    chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+    chrome_options.add_argument('--disable-renderer-backgrounding')
+    
+    # 이미지/CSS 로딩 비활성화 (속도 향상)
+    prefs = {
+        'profile.managed_default_content_settings.images': 2,
+        'profile.managed_default_content_settings.stylesheets': 2
+    }
+    chrome_options.add_experimental_option('prefs', prefs)
+    
+    # User-Agent 설정
+    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    
+    # WebDriver 생성
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.set_page_load_timeout(30)
+    
+    return driver
+
+# 네이버 플레이스 순위 크롤링 (Selenium 사용)
+def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None) -> Dict:
+    """네이버 플레이스 순위 크롤링 (Selenium + 광고 제외)"""
+    driver = None
     try:
-        print(f"크롤링 시작: {keyword}")
+        print(f"🕷️  Selenium 크롤링 시작: {keyword}")
         
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-        }
+        driver = create_chrome_driver()
         
-        # 네이버 검색 (PC 버전 - 더 많은 정보)
-        search_url = f"https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query={keyword}"
-        
+        # 네이버 검색 (모바일 버전)
+        search_url = f"https://m.search.naver.com/search.naver?query={keyword}"
         print(f"크롤링 URL: {search_url}")
         
-        response = requests.get(search_url, headers=headers, timeout=30)
-        response.raise_for_status()
+        driver.get(search_url)
         
-        print(f"응답 코드: {response.status_code}")
+        # 페이지 로딩 대기
+        time.sleep(2)
         
-        soup = BeautifulSoup(response.text, 'lxml')
+        # 페이지 소스 가져오기
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'lxml')
         
         places = []
         my_rank = None
         rank = 0
         
-        # 플레이스 섹션 찾기
-        place_section = soup.select_one('div.place_section')
-        if not place_section:
-            print("플레이스 섹션을 찾을 수 없습니다")
-            # 모바일 버전 시도
-            search_url_mobile = f"https://m.search.naver.com/search.naver?query={keyword}"
-            response = requests.get(search_url_mobile, headers=headers, timeout=30)
-            soup = BeautifulSoup(response.text, 'lxml')
-        
-        # 다양한 선택자로 플레이스 리스트 찾기
+        # 플레이스 리스트 찾기 (여러 선택자 시도)
         place_containers = soup.select('li.Bx, li._item, li.UhI72, ul._list li, div.place_list_wrap li')
         
         print(f"찾은 플레이스 수: {len(place_containers)}")
         
-        for idx, place in enumerate(place_containers[:15], 1):
+        for idx, place in enumerate(place_containers[:20], 1):
             try:
                 # 광고 제외
-                ad_marker = place.select_one('.ad_marker, .ad, [class*="ad"]')
-                if ad_marker and 'ad' in str(ad_marker.get('class', [])).lower():
-                    print(f"광고 제외: {idx}")
-                    continue
+                ad_marker = place.select_one('.ad_marker, .ad, [class*="ad"], [class*="Ad"]')
+                if ad_marker:
+                    ad_classes = str(ad_marker.get('class', []))
+                    if 'ad' in ad_classes.lower():
+                        print(f"광고 제외: {idx}")
+                        continue
                 
                 rank += 1
                 
-                # 업체명 (더 다양한 선택자)
-                name_elem = place.select_one('.place_bluelink, .YwYLL, span.place_name, strong.name, .tit')
+                # 업체명
+                name_elem = place.select_one('.place_bluelink, .YwYLL, span.place_name, strong.name, .tit, a.title')
                 name = name_elem.get_text(strip=True) if name_elem else f"업체 {rank}"
                 
                 # 카테고리
-                category_elem = place.select_one('.category, .cate, .type, .KCMnt')
+                category_elem = place.select_one('.category, .cate, .type, .KCMnt, .info_distance')
                 category = category_elem.get_text(strip=True) if category_elem else "일반"
                 
-                # 리뷰 수 (여러 패턴 시도)
+                # 리뷰 수
                 review_count = 0
-                review_elem = place.select_one('.review_count, .cnt, em.num, .NSTUp')
+                review_elem = place.select_one('.review_count, .cnt, em.num, .NSTUp, .review')
                 if review_elem:
                     review_text = review_elem.get_text(strip=True)
                     numbers = ''.join(filter(str.isdigit, review_text))
                     review_count = int(numbers) if numbers else 0
                 
-                # URL (절대 URL로 변환)
-                link_elem = place.select_one('a[href*="place.naver.com"], a[href*="/place/"], a.place_bluelink')
+                # URL
+                link_elem = place.select_one('a[href*="place.naver.com"], a[href*="/place/"], a.place_bluelink, a.title')
                 place_url = ""
                 if link_elem:
                     href = link_elem.get('href', '')
@@ -211,23 +244,26 @@ def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
                 # 내 순위 확인
                 if target_url and place_url and (target_url in place_url or place_url in target_url):
                     my_rank = rank
-                    print(f"내 순위 발견: {rank}위")
+                    print(f"✅ 내 순위 발견: {rank}위")
                 
+                # 상위 10개만 수집
+                if rank >= 10:
+                    break
+                    
             except Exception as e:
                 print(f"플레이스 파싱 오류 (idx={idx}): {str(e)}")
                 continue
         
-        print(f"총 {len(places)}개 플레이스 추출 완료")
+        print(f"✅ 총 {len(places)}개 플레이스 추출 완료")
         
         return {
             "success": True,
             "myRank": my_rank,
-            "competitors": places[:10]  # 상위 10개만 반환
+            "competitors": places[:10]
         }
         
     except Exception as e:
-        print(f"크롤링 오류: {str(e)}")
-        import traceback
+        print(f"❌ Selenium 크롤링 오류: {str(e)}")
         traceback.print_exc()
         return {
             "success": False,
@@ -235,6 +271,14 @@ def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
             "myRank": None,
             "competitors": []
         }
+    finally:
+        # 중요: 메모리 누수 방지를 위해 반드시 driver 종료
+        if driver:
+            try:
+                driver.quit()
+                print("✅ WebDriver 정상 종료")
+            except Exception as e:
+                print(f"⚠️  WebDriver 종료 오류: {str(e)}")
 
 # 경쟁사 키워드 추출
 def extract_competitor_keywords(competitors: List[Dict]) -> List[Dict]:
@@ -386,9 +430,9 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         search_volume = parse_search_volume(api_response)
         print(f"📈 검색량: {search_volume.get('monthlyAvg')}, 경쟁도: {search_volume.get('competition')}")
         
-        # 2. BeautifulSoup으로 플레이스 순위 크롤링
-        print(f"\n🕷️  2단계: 플레이스 순위 크롤링 중...")
-        ranking_data = crawl_place_ranking(keyword, place_url)
+        # 2. Selenium으로 플레이스 순위 크롤링
+        print(f"\n🕷️  2단계: Selenium 플레이스 순위 크롤링 중...")
+        ranking_data = crawl_place_ranking_selenium(keyword, place_url)
         print(f"✅ 크롤링 완료: {len(ranking_data.get('competitors', []))}개 업체 발견")
         
         # 3. 경쟁사 키워드 추출
