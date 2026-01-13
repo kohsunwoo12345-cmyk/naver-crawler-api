@@ -27,12 +27,19 @@ NAVER_API_CUSTOMER_ID = os.getenv("NAVER_API_CUSTOMER_ID")
 NAVER_API_LICENSE = os.getenv("NAVER_API_LICENSE")
 NAVER_API_SECRET = os.getenv("NAVER_API_SECRET")
 
-# 환경 변수 검증
-print(f"🔧 Environment Check:")
-print(f"  - CUSTOMER_ID: {'✅ Set' if NAVER_API_CUSTOMER_ID else '❌ Missing'}")
-print(f"  - LICENSE: {'✅ Set' if NAVER_API_LICENSE else '❌ Missing'}")
-print(f"  - SECRET: {'✅ Set' if NAVER_API_SECRET else '❌ Missing'}")
+# 환경 변수 검증 (상세)
+print(f"=" * 60)
+print(f"🔧 Environment Variables Check:")
+print(f"  - CUSTOMER_ID: {NAVER_API_CUSTOMER_ID if NAVER_API_CUSTOMER_ID else '❌ NOT SET'}")
+print(f"  - LICENSE: {NAVER_API_LICENSE[:20] + '...' if NAVER_API_LICENSE else '❌ NOT SET'}")
+print(f"  - SECRET: {NAVER_API_SECRET[:20] + '...' if NAVER_API_SECRET else '❌ NOT SET'}")
 print(f"  - PORT: {os.getenv('PORT', '8000')}")
+print(f"=" * 60)
+
+# 환경 변수 누락 시 경고
+if not NAVER_API_CUSTOMER_ID or not NAVER_API_LICENSE or not NAVER_API_SECRET:
+    print("⚠️  WARNING: Some environment variables are missing!")
+    print("⚠️  Please set all required variables in Railway dashboard.")
 
 # 요청 모델
 class SearchAnalysisRequest(BaseModel):
