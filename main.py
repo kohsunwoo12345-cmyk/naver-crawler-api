@@ -7,7 +7,7 @@ import hmac
 import base64
 import time
 from typing import List, Dict, Optional
-from playwright.sync_api import sync_playwright
+from bs4 import BeautifulSoup
 import json
 import os
 
@@ -96,89 +96,93 @@ def call_naver_api(keyword: str) -> Dict:
 
 # 네이버 플레이스 순위 크롤링
 def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
-    """네이버 플레이스 순위 크롤링 (광고 제외)"""
+    """네이버 플레이스 순위 크롤링 (광고 제외) - BeautifulSoup 사용"""
     try:
-        with sync_playwright() as p:
-            # Chromium 브라우저 실행
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                viewport={'width': 1920, 'height': 1080}
-            )
-            page = context.new_page()
-            
-            # 네이버 검색
-            search_url = f"https://m.search.naver.com/search.naver?query={keyword}&where=m&sm=mob_hty.idx"
-            page.goto(search_url, wait_until='networkidle')
-            
-            # 페이지 로딩 대기
-            time.sleep(3)
-            
-            # 플레이스 목록 찾기
-            places = []
-            my_rank = None
-            
-            # 광고가 아닌 일반 플레이스 찾기
-            place_elements = page.query_selector_all("div.place_list_wrap li, div.lst_total li")
-            
-            for idx, place in enumerate(place_elements[:20], 1):
-                try:
-                    # 광고 요소 제외
-                    class_name = place.get_attribute("class") or ""
-                    if "ad" in class_name.lower():
-                        continue
-                    
-                    # 업체명
-                    name_elem = place.query_selector(".tit, .name, h2, .title")
-                    name = name_elem.inner_text().strip() if name_elem else "업체명 없음"
-                    
-                    # 카테고리
-                    try:
-                        category_elem = place.query_selector(".category, .cate")
-                        category = category_elem.inner_text().strip() if category_elem else ""
-                    except:
-                        category = ""
-                    
-                    # 리뷰 수
-                    try:
-                        review_elem = place.query_selector(".cnt, .review_count")
-                        review_text = review_elem.inner_text().strip() if review_elem else "0"
-                        review_count = int(''.join(filter(str.isdigit, review_text)))
-                    except:
-                        review_count = 0
-                    
-                    # URL
-                    try:
-                        link_elem = place.query_selector("a")
-                        place_url = link_elem.get_attribute("href") or ""
-                    except:
-                        place_url = ""
-                    
-                    place_info = {
-                        "rank": idx,
-                        "name": name,
-                        "category": category,
-                        "reviewCount": review_count,
-                        "url": place_url
-                    }
-                    
-                    places.append(place_info)
-                    
-                    # 내 순위 확인
-                    if target_url and target_url in place_url:
-                        my_rank = idx
-                    
-                except Exception as e:
-                    print(f"플레이스 파싱 오류: {str(e)}")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        }
+        
+        # 네이버 검색 (모바일)
+        search_url = f"https://m.search.naver.com/search.naver?query={keyword}&where=m&sm=mob_hty.idx"
+        
+        response = requests.get(search_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'lxml')
+        
+        places = []
+        my_rank = None
+        rank = 0
+        
+        # 다양한 플레이스 선택자 시도
+        place_containers = soup.select('div.place_list_wrap li, div.lst_total li, div.list_content li')
+        
+        if not place_containers:
+            # PC 버전 시도
+            search_url_pc = f"https://search.naver.com/search.naver?query={keyword}&where=nexearch"
+            response_pc = requests.get(search_url_pc, headers=headers, timeout=30)
+            soup = BeautifulSoup(response_pc.text, 'lxml')
+            place_containers = soup.select('div.place_list li, div.place_item')
+        
+        for place in place_containers[:20]:
+            try:
+                # 광고 제외
+                class_attr = place.get('class', [])
+                if isinstance(class_attr, list):
+                    class_str = ' '.join(class_attr)
+                else:
+                    class_str = str(class_attr)
+                
+                if 'ad' in class_str.lower() or 'sponsor' in class_str.lower():
                     continue
-            
-            browser.close()
-            
-            return {
-                "success": True,
-                "myRank": my_rank,
-                "competitors": places[:10]  # 상위 10개만 반환
-            }
+                
+                rank += 1
+                
+                # 업체명
+                name_elem = place.select_one('.tit, .name, h2, .title, .place_name, strong')
+                name = name_elem.get_text(strip=True) if name_elem else "업체명 없음"
+                
+                # 카테고리
+                category_elem = place.select_one('.category, .cate, .type')
+                category = category_elem.get_text(strip=True) if category_elem else ""
+                
+                # 리뷰 수
+                review_count = 0
+                review_elem = place.select_one('.cnt, .review_count, .review')
+                if review_elem:
+                    review_text = review_elem.get_text(strip=True)
+                    numbers = ''.join(filter(str.isdigit, review_text))
+                    review_count = int(numbers) if numbers else 0
+                
+                # URL
+                link_elem = place.select_one('a[href]')
+                place_url = link_elem.get('href', '') if link_elem else ""
+                
+                place_info = {
+                    "rank": rank,
+                    "name": name,
+                    "category": category,
+                    "reviewCount": review_count,
+                    "url": place_url
+                }
+                
+                places.append(place_info)
+                
+                # 내 순위 확인
+                if target_url and target_url in place_url:
+                    my_rank = rank
+                
+            except Exception as e:
+                print(f"플레이스 파싱 오류: {str(e)}")
+                continue
+        
+        return {
+            "success": True,
+            "myRank": my_rank,
+            "competitors": places[:10]  # 상위 10개만 반환
+        }
         
     except Exception as e:
         print(f"크롤링 오류: {str(e)}")
