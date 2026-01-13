@@ -363,6 +363,177 @@ def extract_competitor_keywords(competitors: List[Dict]) -> List[Dict]:
     
     return result
 
+# 관련 키워드 추출
+def extract_related_keywords(api_response: Dict, original_keyword: str = "", limit: int = 10) -> List[Dict]:
+    """네이버 API에서 관련 키워드 추출 (CTR 포함)"""
+    try:
+        if not api_response.get("success"):
+            return []
+        
+        data = api_response.get("data", {})
+        keywords = data.get("keywordList", [])
+        
+        if not keywords:
+            return []
+        
+        # 상위 N개 키워드 추출
+        result = []
+        for kw in keywords[:limit]:
+            monthly_pc = kw.get("monthlyPcQcCnt", 0)
+            monthly_mobile = kw.get("monthlyMobileQcCnt", 0)
+            total_search = monthly_pc + monthly_mobile
+            
+            # CTR (클릭률) 계산
+            pc_ctr = kw.get("monthlyAvePcCtr", 0)
+            mobile_ctr = kw.get("monthlyAveMobileCtr", 0)
+            
+            # 가중 평균 CTR
+            if total_search > 0:
+                weighted_ctr = (pc_ctr * monthly_pc + mobile_ctr * monthly_mobile) / total_search
+            else:
+                weighted_ctr = 0
+            
+            # 경쟁 강도
+            comp_idx = kw.get("compIdx", "01")
+            comp_map = {
+                "01": "낮음",
+                "02": "보통",
+                "03": "높음",
+                "04": "매우 높음"
+            }
+            competition = comp_map.get(comp_idx, "보통")
+            
+            result.append({
+                "keyword": kw.get("relKeyword", ""),
+                "monthlySearchVolume": total_search,
+                "monthlyPcSearch": monthly_pc,
+                "monthlyMobileSearch": monthly_mobile,
+                "averageCtr": round(weighted_ctr, 2),  # 평균 클릭률 (%)
+                "pcCtr": round(pc_ctr, 2),
+                "mobileCtr": round(mobile_ctr, 2),
+                "competition": competition
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"관련 키워드 추출 오류: {str(e)}")
+        return []
+
+# 검색량 데이터 파싱 (확장 버전)
+def parse_search_volume_extended(api_response: Dict, original_keyword: str = "") -> Dict:
+    """네이버 API 응답에서 검색량 + CTR 데이터 파싱"""
+    try:
+        if not api_response.get("success"):
+            return {
+                "monthlyAvg": 0,
+                "monthlyPcSearch": 0,
+                "monthlyMobileSearch": 0,
+                "averageCtr": 0,
+                "pcCtr": 0,
+                "mobileCtr": 0,
+                "competition": "알 수 없음",
+                "recommendation": "분석중"
+            }
+        
+        data = api_response.get("data", {})
+        keywords = data.get("keywordList", [])
+        
+        if not keywords:
+            return {
+                "monthlyAvg": 0,
+                "monthlyPcSearch": 0,
+                "monthlyMobileSearch": 0,
+                "averageCtr": 0,
+                "pcCtr": 0,
+                "mobileCtr": 0,
+                "competition": "낮음",
+                "recommendation": "데이터 없음"
+            }
+        
+        # 원본 키워드와 가장 유사한 키워드 찾기
+        keyword_data = keywords[0]  # 기본값
+        
+        if original_keyword:
+            # 지역명 제거
+            regions = ["인천", "서울", "부산", "대구", "대전", "광주", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+                       "서구", "북구", "동구", "남구", "중구", "청라", "검단", "송도", "강남", "강북", "서초", "종로", "마포", "강서", "해운대"]
+            core_original = original_keyword
+            for region in regions:
+                core_original = core_original.replace(region + " ", "").replace(region, "")
+            core_original = core_original.strip()
+            
+            # 정확히 일치하는 키워드 찾기
+            for kw in keywords:
+                if kw.get("relKeyword", "").strip() == core_original:
+                    keyword_data = kw
+                    break
+            else:
+                # 부분 일치 찾기
+                for kw in keywords:
+                    if core_original in kw.get("relKeyword", "") or kw.get("relKeyword", "") in core_original:
+                        keyword_data = kw
+                        break
+        
+        monthly_pc = keyword_data.get("monthlyPcQcCnt", 0)
+        monthly_mobile = keyword_data.get("monthlyMobileQcCnt", 0)
+        monthly_avg = monthly_pc + monthly_mobile
+        
+        # CTR 데이터
+        pc_ctr = keyword_data.get("monthlyAvePcCtr", 0)
+        mobile_ctr = keyword_data.get("monthlyAveMobileCtr", 0)
+        
+        # 가중 평균 CTR
+        if monthly_avg > 0:
+            weighted_ctr = (pc_ctr * monthly_pc + mobile_ctr * monthly_mobile) / monthly_avg
+        else:
+            weighted_ctr = 0
+        
+        comp_idx = keyword_data.get("compIdx", "01")
+        
+        # 경쟁 강도 판단
+        comp_map = {
+            "01": "낮음",
+            "02": "보통",
+            "03": "높음",
+            "04": "매우 높음"
+        }
+        competition = comp_map.get(comp_idx, "보통")
+        
+        # 추천도 판단
+        if monthly_avg >= 1000 and comp_idx in ["01", "02"]:
+            recommendation = "적극 추천"
+        elif monthly_avg >= 500:
+            recommendation = "추천"
+        elif monthly_avg >= 100:
+            recommendation = "보통"
+        else:
+            recommendation = "낮은 검색량"
+        
+        return {
+            "monthlyAvg": monthly_avg,
+            "monthlyPcSearch": monthly_pc,
+            "monthlyMobileSearch": monthly_mobile,
+            "averageCtr": round(weighted_ctr, 2),
+            "pcCtr": round(pc_ctr, 2),
+            "mobileCtr": round(mobile_ctr, 2),
+            "competition": competition,
+            "recommendation": recommendation
+        }
+        
+    except Exception as e:
+        print(f"데이터 파싱 오류: {str(e)}")
+        return {
+            "monthlyAvg": 0,
+            "monthlyPcSearch": 0,
+            "monthlyMobileSearch": 0,
+            "averageCtr": 0,
+            "pcCtr": 0,
+            "mobileCtr": 0,
+            "competition": "알 수 없음",
+            "recommendation": "오류 발생"
+        }
+
 # 검색량 데이터 파싱
 def parse_search_volume(api_response: Dict, original_keyword: str = "") -> Dict:
     """네이버 API 응답에서 검색량 데이터 파싱"""
@@ -475,6 +646,15 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         api_response = call_naver_api(keyword)
         print(f"✅ API 응답: success={api_response.get('success')}")
         
+        # 확장 버전 (CTR 포함)
+        search_volume_extended = parse_search_volume_extended(api_response, keyword)
+        print(f"📈 검색량: {search_volume_extended.get('monthlyAvg')}, 경쟁도: {search_volume_extended.get('competition')}, 평균 CTR: {search_volume_extended.get('averageCtr')}%")
+        
+        # 관련 키워드 추출 (10개)
+        related_keywords = extract_related_keywords(api_response, keyword, limit=10)
+        print(f"🔑 관련 키워드: {len(related_keywords)}개 발견")
+        
+        # 기존 호환성을 위한 간단한 버전
         search_volume = parse_search_volume(api_response, keyword)
         print(f"📈 검색량: {search_volume.get('monthlyAvg')}, 경쟁도: {search_volume.get('competition')}")
         
@@ -496,6 +676,8 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         return {
             "success": True,
             "searchVolume": search_volume,
+            "searchVolumeExtended": search_volume_extended,  # CTR 포함
+            "relatedKeywords": related_keywords,  # 관련 키워드
             "ranking": {
                 "myRank": ranking_data.get("myRank"),
                 "competitors": competitors
