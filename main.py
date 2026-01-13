@@ -291,13 +291,6 @@ def extract_competitor_keywords(competitors: List[Dict]) -> List[Dict]:
         })
     
     return result
-        
-        result.append({
-            "businessName": name,
-            "keywords": list(set(keywords))[:5]  # 중복 제거 후 최대 5개
-        })
-    
-    return result
 
 # 검색량 데이터 파싱
 def parse_search_volume(api_response: Dict) -> Dict:
