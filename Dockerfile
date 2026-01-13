@@ -4,53 +4,30 @@ FROM python:3.11-slim
 # 작업 디렉토리 설정
 WORKDIR /app
 
-# 환경 변수 설정
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-
-# 시스템 패키지 업데이트 및 필수 도구 설치
+# 필수 패키지 설치 (Chrome + ChromeDriver)
 RUN apt-get update && apt-get install -y \
     wget \
-    curl \
     gnupg \
     unzip \
-    ca-certificates \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libwayland-client0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxkbcommon0 \
-    libxrandr2 \
-    xdg-utils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Chrome 저장소 추가 (최신 방식)
-RUN wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    curl \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
-    && apt-get install -y /tmp/google-chrome-stable_current_amd64.deb \
-    && rm /tmp/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y google-chrome-stable \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Chrome 버전 확인
-RUN google-chrome --version
+# ChromeDriver 설치
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1) \
+    && CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}") \
+    && wget -q "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" \
+    && unzip chromedriver_linux64.zip \
+    && mv chromedriver /usr/local/bin/ \
+    && chmod +x /usr/local/bin/chromedriver \
+    && rm chromedriver_linux64.zip
 
-# Python 의존성 파일 복사
+# Python 의존성 설치
 COPY requirements.txt .
-
-# Python 패키지 설치 (webdriver-manager가 자동으로 ChromeDriver 관리)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
