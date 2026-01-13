@@ -117,62 +117,24 @@ def call_naver_api(keyword: str) -> Dict:
             "error": str(e)
         }
 
-# Selenium WebDriver 생성 함수 (메모리 최적화)
-def create_chrome_driver():
-    """Chrome WebDriver 생성 (Headless 모드, 메모리 최적화)"""
-    chrome_options = Options()
-    
-    # Headless 모드
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    
-    # 메모리 최적화
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--disable-software-rasterizer')
-    chrome_options.add_argument('--disable-extensions')
-    chrome_options.add_argument('--disable-background-networking')
-    chrome_options.add_argument('--disable-background-timer-throttling')
-    chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-    chrome_options.add_argument('--disable-renderer-backgrounding')
-    
-    # 이미지/CSS 로딩 비활성화 (속도 향상)
-    prefs = {
-        'profile.managed_default_content_settings.images': 2,
-        'profile.managed_default_content_settings.stylesheets': 2
-    }
-    chrome_options.add_experimental_option('prefs', prefs)
-    
-    # User-Agent 설정
-    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-    
-    # WebDriver 생성
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.set_page_load_timeout(30)
-    
-    return driver
-
-# 네이버 플레이스 순위 크롤링 (Selenium 사용)
-def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None) -> Dict:
-    """네이버 플레이스 순위 크롤링 (Selenium + 광고 제외)"""
-    driver = None
+# 네이버 플레이스 순위 크롤링 (BeautifulSoup 사용)
+def crawl_place_ranking(keyword: str, target_url: Optional[str] = None) -> Dict:
+    """네이버 플레이스 순위 크롤링 (BeautifulSoup + 광고 제외)"""
     try:
-        print(f"🕷️  Selenium 크롤링 시작: {keyword}")
-        
-        driver = create_chrome_driver()
+        print(f"🕷️  크롤링 시작: {keyword}")
         
         # 네이버 검색 (모바일 버전)
         search_url = f"https://m.search.naver.com/search.naver?query={keyword}"
         print(f"크롤링 URL: {search_url}")
         
-        driver.get(search_url)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
+        }
         
-        # 페이지 로딩 대기
-        time.sleep(2)
+        response = requests.get(search_url, headers=headers, timeout=30)
+        print(f"응답 코드: {response.status_code}")
         
-        # 페이지 소스 가져오기
-        page_source = driver.page_source
-        soup = BeautifulSoup(page_source, 'lxml')
+        soup = BeautifulSoup(response.text, 'lxml')
         
         places = []
         my_rank = None
@@ -257,7 +219,7 @@ def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None)
         }
         
     except Exception as e:
-        print(f"❌ Selenium 크롤링 오류: {str(e)}")
+        print(f"❌ 크롤링 오류: {str(e)}")
         traceback.print_exc()
         return {
             "success": False,
@@ -265,8 +227,6 @@ def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None)
             "myRank": None,
             "competitors": []
         }
-    finally:
-        # 중요: 메모리 누수 방지를 위해 반드시 driver 종료
         if driver:
             try:
                 driver.quit()
@@ -424,9 +384,9 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         search_volume = parse_search_volume(api_response)
         print(f"📈 검색량: {search_volume.get('monthlyAvg')}, 경쟁도: {search_volume.get('competition')}")
         
-        # 2. Selenium으로 플레이스 순위 크롤링
-        print(f"\n🕷️  2단계: Selenium 플레이스 순위 크롤링 중...")
-        ranking_data = crawl_place_ranking_selenium(keyword, place_url)
+        # 2. BeautifulSoup으로 플레이스 순위 크롤링
+        print(f"\n🕷️  2단계: 플레이스 순위 크롤링 중...")
+        ranking_data = crawl_place_ranking(keyword, place_url)
         print(f"✅ 크롤링 완료: {len(ranking_data.get('competitors', []))}개 업체 발견")
         
         # 3. 경쟁사 키워드 추출
