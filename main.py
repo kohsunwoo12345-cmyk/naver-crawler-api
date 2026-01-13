@@ -373,18 +373,33 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         keyword = request.keyword
         place_url = request.placeUrl
         
-        print(f"분석 시작: {keyword}, {place_url}")
+        print(f"\n{'='*60}")
+        print(f"📊 분석 시작: {keyword}")
+        print(f"📍 플레이스 URL: {place_url if place_url else '미입력'}")
+        print(f"{'='*60}\n")
         
         # 1. 네이버 검색광고 API로 검색량 조회
+        print(f"🔍 1단계: 네이버 검색광고 API 호출 중...")
         api_response = call_naver_api(keyword)
-        search_volume = parse_search_volume(api_response)
+        print(f"✅ API 응답: success={api_response.get('success')}")
         
-        # 2. Selenium으로 플레이스 순위 크롤링
+        search_volume = parse_search_volume(api_response)
+        print(f"📈 검색량: {search_volume.get('monthlyAvg')}, 경쟁도: {search_volume.get('competition')}")
+        
+        # 2. BeautifulSoup으로 플레이스 순위 크롤링
+        print(f"\n🕷️  2단계: 플레이스 순위 크롤링 중...")
         ranking_data = crawl_place_ranking(keyword, place_url)
+        print(f"✅ 크롤링 완료: {len(ranking_data.get('competitors', []))}개 업체 발견")
         
         # 3. 경쟁사 키워드 추출
+        print(f"\n🔑 3단계: 경쟁사 키워드 추출 중...")
         competitors = ranking_data.get("competitors", [])
         keywords = extract_competitor_keywords(competitors)
+        print(f"✅ 키워드 추출 완료: {len(keywords)}개 업체")
+        
+        print(f"\n{'='*60}")
+        print(f"✅ 분석 완료!")
+        print(f"{'='*60}\n")
         
         return {
             "success": True,
@@ -397,7 +412,9 @@ async def analyze_keyword(request: SearchAnalysisRequest):
         }
         
     except Exception as e:
-        print(f"분석 오류: {str(e)}")
+        print(f"\n❌ 분석 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/test-api")
