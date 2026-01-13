@@ -10,6 +10,7 @@ from typing import List, Dict, Optional
 from bs4 import BeautifulSoup
 import json
 import os
+import psutil  # 메모리 모니터링
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -48,6 +49,21 @@ print(f"=" * 60)
 if not NAVER_API_CUSTOMER_ID or not NAVER_API_LICENSE or not NAVER_API_SECRET:
     print("⚠️  WARNING: Some environment variables are missing!")
     print("⚠️  Please set all required variables in Railway dashboard.")
+
+# 메모리 모니터링 함수
+def log_memory_usage(stage: str):
+    """메모리 사용량 로그 (Railway 비용 모니터링)"""
+    try:
+        process = psutil.Process()
+        mem_info = process.memory_info()
+        mem_mb = mem_info.rss / 1024 / 1024  # MB 단위
+        print(f"💾 [{stage}] 메모리 사용량: {mem_mb:.2f} MB")
+        
+        # 메모리 사용량이 높으면 경고
+        if mem_mb > 500:
+            print(f"⚠️  경고: 메모리 사용량이 높습니다! ({mem_mb:.2f} MB)")
+    except Exception as e:
+        print(f"메모리 모니터링 오류: {str(e)}")
 
 # 요청 모델
 class SearchAnalysisRequest(BaseModel):
@@ -165,9 +181,12 @@ def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None)
     """네이버 플레이스 순위 크롤링 (Selenium + 광고 제외)"""
     driver = None
     try:
+        log_memory_usage("크롤링 시작 전")
+        
         print(f"🕷️  Selenium 크롤링 시작: {keyword}")
         
         driver = create_chrome_driver()
+        log_memory_usage("WebDriver 생성 후")
         
         # 네이버 검색 (모바일 버전)
         search_url = f"https://m.search.naver.com/search.naver?query={keyword}"
@@ -258,6 +277,8 @@ def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None)
         
         print(f"✅ 총 {len(places)}개 플레이스 추출 완료")
         
+        log_memory_usage("크롤링 완료 (driver.quit() 전)")
+        
         return {
             "success": True,
             "myRank": my_rank,
@@ -274,13 +295,34 @@ def crawl_place_ranking_selenium(keyword: str, target_url: Optional[str] = None)
             "competitors": []
         }
     finally:
-        # 중요: 메모리 누수 방지를 위해 반드시 driver 종료
+        # 💰 CRITICAL: 메모리 누수 방지 (Railway 비용 절약)
+        # Chrome 프로세스를 확실하게 종료하지 않으면 메모리 계속 소모!
         if driver:
             try:
+                # 모든 윈도우 닫기
+                try:
+                    driver.close()
+                except:
+                    pass
+                
+                # WebDriver 완전 종료 (프로세스 킬)
                 driver.quit()
-                print("✅ WebDriver 정상 종료")
+                print("✅ WebDriver 정상 종료 (메모리 해제)")
+                
+                # 추가 안전장치: driver 변수 None으로 설정
+                driver = None
+                
             except Exception as e:
                 print(f"⚠️  WebDriver 종료 오류: {str(e)}")
+                # 오류 발생해도 driver 변수는 None으로
+                driver = None
+        
+        # 가비지 컬렉션 강제 실행 (메모리 정리)
+        import gc
+        gc.collect()
+        print("🧹 메모리 가비지 컬렉션 완료")
+        
+        log_memory_usage("크롤링 완료 (메모리 정리 후)")
 
 # 경쟁사 키워드 추출
 def extract_competitor_keywords(competitors: List[Dict]) -> List[Dict]:
