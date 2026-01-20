@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUPERPLAC 인플랩 - 소셜미디어 트래픽 스토어</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="fas fa-rocket me-2"></i>SUPERPLAC 인플랩
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#platforms">플랫폼</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#products">상품</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">이용방법</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">문의</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="cartBtn">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="badge bg-danger" id="cartCount">0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section bg-gradient text-white text-center py-5">
+        <div class="container py-5">
+            <h1 class="display-3 fw-bold mb-4">
+                소셜미디어 성장을 <span class="text-warning">가속화</span>하세요
+            </h1>
+            <p class="lead mb-4">
+                인스타그램, 유튜브, 쓰레드, 페이스북, 네이버 - 모든 플랫폼의 성장 솔루션
+            </p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="#products" class="btn btn-warning btn-lg px-5">
+                    <i class="fas fa-shopping-bag me-2"></i>지금 시작하기
+                </a>
+                <a href="#how-it-works" class="btn btn-outline-light btn-lg px-5">
+                    <i class="fas fa-play-circle me-2"></i>이용방법
+                </a>
+            </div>
+            
+            <!-- Stats -->
+            <div class="row mt-5 pt-5">
+                <div class="col-md-3">
+                    <h2 class="display-5 fw-bold" id="statsProducts">0</h2>
+                    <p>제공 상품</p>
+                </div>
+                <div class="col-md-3">
+                    <h2 class="display-5 fw-bold" id="statsOrders">0</h2>
+                    <p>완료 주문</p>
+                </div>
+                <div class="col-md-3">
+                    <h2 class="display-5 fw-bold">5+</h2>
+                    <p>지원 플랫폼</p>
+                </div>
+                <div class="col-md-3">
+                    <h2 class="display-5 fw-bold">24/7</h2>
+                    <p>고객 지원</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platforms Section -->
+    <section id="platforms" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">지원 플랫폼</h2>
+                <p class="text-muted">다양한 소셜미디어 플랫폼에서 성장하세요</p>
+            </div>
+            
+            <div class="row g-4" id="platformsContainer">
+                <!-- 플랫폼 카드가 동적으로 추가됩니다 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section id="products" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">상품 카탈로그</h2>
+                <p class="text-muted">원하는 서비스를 선택하고 바로 주문하세요</p>
+            </div>
+            
+            <!-- Platform Filter -->
+            <div class="text-center mb-4">
+                <div class="btn-group" role="group" id="platformFilter">
+                    <button type="button" class="btn btn-outline-primary active" data-platform="all">
+                        전체
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Products Grid -->
+            <div class="row g-4" id="productsContainer">
+                <!-- 상품 카드가 동적으로 추가됩니다 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">이용방법</h2>
+                <p class="text-muted">간단한 3단계로 시작하세요</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-primary text-white mb-3">
+                            <i class="fas fa-search fa-3x"></i>
+                        </div>
+                        <h4>1. 상품 선택</h4>
+                        <p class="text-muted">원하는 플랫폼과 서비스를 선택하세요</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-success text-white mb-3">
+                            <i class="fas fa-credit-card fa-3x"></i>
+                        </div>
+                        <h4>2. 주문 & 결제</h4>
+                        <p class="text-muted">수량을 입력하고 안전하게 결제하세요</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-warning text-white mb-3">
+                            <i class="fas fa-rocket fa-3x"></i>
+                        </div>
+                        <h4>3. 성장 확인</h4>
+                        <p class="text-muted">실시간으로 성장하는 계정을 확인하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-5 bg-dark text-white">
+        <div class="container text-center">
+            <h2 class="display-5 fw-bold mb-4">문의하기</h2>
+            <p class="lead mb-4">궁금한 점이 있으신가요? 언제든 연락주세요!</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="mailto:support@superplac.com" class="btn btn-outline-light">
+                    <i class="fas fa-envelope me-2"></i>이메일 문의
+                </a>
+                <a href="#" class="btn btn-outline-light">
+                    <i class="fab fa-telegram me-2"></i>텔레그램
+                </a>
+                <a href="#" class="btn btn-outline-light">
+                    <i class="fab fa-whatsapp me-2"></i>왓츠앱
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2026 SUPERPLAC 인플랩. All rights reserved.</p>
+            <p class="text-muted small">소셜미디어 성장 플랫폼</p>
+        </div>
+    </footer>
+
+    <!-- Order Modal -->
+    <div class="modal fade" id="orderModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">주문하기</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="orderForm">
+                        <input type="hidden" id="productId">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">상품명</label>
+                            <p id="modalProductName" class="text-muted"></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="customerName" class="form-label">이름 *</label>
+                            <input type="text" class="form-control" id="customerName" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="customerEmail" class="form-label">이메일 *</label>
+                            <input type="email" class="form-control" id="customerEmail" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="targetUrl" class="form-label">대상 URL *</label>
+                            <input type="url" class="form-control" id="targetUrl" 
+                                   placeholder="예: https://instagram.com/yourprofile" required>
+                            <small class="text-muted">서비스를 제공할 프로필 또는 게시물 URL을 입력하세요</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">수량 *</label>
+                            <input type="number" class="form-control" id="quantity" required>
+                            <small class="text-muted" id="quantityHint"></small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">요청사항 (선택)</label>
+                            <textarea class="form-control" id="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>총 금액:</strong> <span id="totalPrice" class="fw-bold">₩0</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">결제 방법 *</label>
+                            <select class="form-select" id="paymentMethod" required>
+                                <option value="card">신용/체크카드</option>
+                                <option value="kakaopay">카카오페이</option>
+                                <option value="naverpay">네이버페이</option>
+                                <option value="bank">무통장입금</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" id="submitOrder">주문하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

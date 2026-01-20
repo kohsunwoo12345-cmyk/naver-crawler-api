@@ -1,58 +1,116 @@
-# Naver Crawler API
+# SUPERPLAC 인플랩 (InfluLab)
 
-네이버 검색광고 API + Selenium 크롤링 서버
+소셜 미디어 트래픽 구매 플랫폼
 
-## 기술 스택
+## 📱 지원 플랫폼
+
+- **Instagram**: 팔로워, 좋아요, 조회수, 저장, 공유
+- **YouTube**: 구독자, 조회수, 좋아요, 댓글
+- **Threads**: 팔로워, 좋아요, 리포스트
+- **Facebook**: 팔로워, 좋아요, 공유, 댓글
+- **Naver**: 플레이스 지수, 블로그 방문자, 카페 멤버
+
+## 🏗️ 기술 스택
+
+### Backend
 - **FastAPI**: Python 웹 프레임워크
-- **Selenium**: 웹 자동화 및 크롤링
-- **Chrome (Headless)**: 브라우저 엔진
-- **네이버 검색광고 API**: 검색량 데이터
+- **SQLAlchemy**: ORM
+- **SQLite**: 데이터베이스 (개발), PostgreSQL (프로덕션)
+- **Pydantic**: 데이터 검증
 
-## 주요 기능
-1. **네이버 검색광고 API**: 월 평균 검색량, 경쟁 강도
-2. **Selenium 크롤링**: 플레이스 순위, 경쟁사 정보
-3. **경쟁사 키워드 추출**: 자동 키워드 분석
-4. **메모리 최적화**: driver.quit() 자동 처리
+### Frontend
+- **HTML5/CSS3/JavaScript**: 현대적 반응형 UI
+- **Bootstrap 5**: UI 컴포넌트
+- **Font Awesome**: 아이콘
+- **Chart.js**: 통계 차트
 
-## 환경 변수
-```
-NAVER_API_CUSTOMER_ID=1978176
-NAVER_API_LICENSE=0100000000713f505bb5fda08833f32b6a9ae08c5ea5789f134c7b140446e58bdb4183fc1d
-NAVER_API_SECRET=AQAAAABxP1Bbtf2giDPzK2qa4Ixetc774mZsCjCKxTp2BVV29g==
-PORT=8000
-```
+## 🚀 주요 기능
 
-## API 엔드포인트
-- `GET /`: 헬스 체크
-- `POST /analyze`: 키워드 분석
-- `GET /test-api`: 네이버 API 테스트
+### 1. 상품 카탈로그
+- 플랫폼별 서비스 분류
+- 실시간 가격 표시
+- 수량별 할인
+- 배송 예상 시간
 
-## Docker 배포
+### 2. 주문 시스템
+- 장바구니
+- 즉시 구매
+- 주문 추적
+- 진행 상황 알림
+
+### 3. 결제 시스템
+- 신용카드/체크카드
+- 간편결제 (카카오페이, 네이버페이)
+- 가상계좌
+- 포인트 적립
+
+### 4. 관리자 대시보드
+- 주문 관리
+- 상품 관리
+- 통계 분석
+- 고객 관리
+
+## 📦 설치 및 실행
+
+### 로컬 개발
 ```bash
-docker build -t naver-crawler .
-docker run -p 8000:8000 \
-  -e NAVER_API_CUSTOMER_ID=1978176 \
-  -e NAVER_API_LICENSE=... \
-  -e NAVER_API_SECRET=... \
-  naver-crawler
-```
-
-## Railway 배포
-1. GitHub 저장소 연결
-2. 환경 변수 설정 (4개)
-3. 자동 빌드 & 배포
-
-## 로컬 개발
-```bash
+# 의존성 설치
 pip install -r requirements.txt
+
+# 데이터베이스 초기화
+python -m backend.init_db
+
+# 서버 실행
 python main.py
 ```
 
-## 메모리 관리
-- Selenium WebDriver는 사용 후 자동 종료 (`driver.quit()`)
-- Headless 모드로 메모리 사용량 최소화
-- 이미지/CSS 로딩 비활성화로 속도 향상
+### 환경 변수
+```
+DATABASE_URL=sqlite:///./superplac.db
+SECRET_KEY=your-secret-key-here
+PORT=8000
+```
 
-## 배포 정보
-- 저장소: https://github.com/kohsunwoo12345-cmyk/naver-crawler-api
-- Railway URL: https://web-production-14c4.up.railway.app
+## 🌐 API 엔드포인트
+
+### 상품
+- `GET /api/products` - 전체 상품 목록
+- `GET /api/products/{id}` - 상품 상세
+- `GET /api/products/platform/{platform}` - 플랫폼별 상품
+
+### 주문
+- `POST /api/orders` - 주문 생성
+- `GET /api/orders/{id}` - 주문 조회
+- `PUT /api/orders/{id}/status` - 주문 상태 업데이트
+
+### 결제
+- `POST /api/payments/card` - 카드 결제
+- `POST /api/payments/simple` - 간편결제
+- `GET /api/payments/{id}/status` - 결제 상태 조회
+
+## 📊 데이터베이스 스키마
+
+### Products (상품)
+- id, name, platform, service_type, price, quantity, delivery_time, description
+
+### Orders (주문)
+- id, user_id, product_id, quantity, total_price, status, created_at
+
+### Payments (결제)
+- id, order_id, method, amount, status, transaction_id, created_at
+
+## 🔒 보안
+
+- HTTPS 필수
+- API 키 인증
+- SQL Injection 방지
+- XSS 방지
+- CSRF 토큰
+
+## 📝 라이센스
+
+Copyright © 2026 SUPERPLAC. All rights reserved.
+
+## 👥 개발자
+
+SUPERPLAC Team - AI-Powered Social Media Growth Platform
